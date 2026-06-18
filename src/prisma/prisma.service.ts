@@ -22,13 +22,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     try {
       const parsedUrl = new URL(connectionString);
       parsedUrl.searchParams.set('schema', 'studio_gallery');
-      parsedUrl.searchParams.set('options', '-c search_path=studio_gallery');
+      parsedUrl.searchParams.delete('options');
       connectionString = parsedUrl.toString();
     } catch (e) {
       // Fallback
     }
 
     const pool = new Pool({ connectionString });
+    
+    // Set search_path on connection startup, fully compatible with Neon pooler.
+    pool.on('connect', (client) => {
+      client.query('SET search_path TO studio_gallery, public;').catch((err) => {
+        console.error('Failed to set search_path on client connect:', err);
+      });
+    });
+
     const adapter = new PrismaPg(pool, { schema: 'studio_gallery' });
 
     // Pass the adapter so PrismaClient knows how to connect.
