@@ -1,0 +1,11 @@
+# Node / NestJS
+node_modules/
+dist/
+*.log
+
+# Environment secrets
+.env
+
+# Dart / Flutter
+.dart_tool/
+build/

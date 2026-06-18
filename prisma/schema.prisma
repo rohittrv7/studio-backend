@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Users (Studio Owners) ───────────────────────────────────────────────────
+
+model User {
+  id                String    @id @default(uuid())
+  phone             String    @unique
+  firebaseUid       String    @unique @map("firebase_uid")
+  name              String
+  email             String?
+  profilePhoto      String?   @map("profile_photo")
+  role              Role      @default(STUDIO_OWNER)
+  isLocked          Boolean   @default(false) @map("is_locked")
+  lockedUntil       DateTime? @map("locked_until")
+  failedOtpAttempts Int       @default(0) @map("failed_otp_attempts")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  customers     Customer[]
+  galleries     Gallery[]
+  refreshTokens RefreshToken[]
+  fcmTokens     FcmToken[]
+  favorites     Favorite[]
+
+  @@index([phone])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+enum Role {
+  STUDIO_OWNER
+  CUSTOMER
+}
+
+// ─── Refresh Tokens ──────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String?   @map("user_id")
+  customerId String?   @map("customer_id")
+  token      String    @unique
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer? @relation("CustomerRefreshTokens", fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ─── Customers ───────────────────────────────────────────────────────────────
+
+model Customer {
+  id                String    @id @default(uuid())
+  studioOwnerId     String    @map("studio_owner_id")
+  phone             String
+  name              String
+  email             String?
+  profilePhoto      String?   @map("profile_photo")
+  firebaseUid       String?   @unique @map("firebase_uid")
+  isLocked          Boolean   @default(false) @map("is_locked")
+  lockedUntil       DateTime? @map("locked_until")
+  failedOtpAttempts Int       @default(0) @map("failed_otp_attempts")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  studioOwner   User          @relation(fields: [studioOwnerId], references: [id], onDelete: Restrict)
+  galleries     Gallery[]
+  favorites     Favorite[]
+  galleryViews  GalleryView[]
+  fcmTokens     FcmToken[]
+  refreshTokens RefreshToken[] @relation("CustomerRefreshTokens")
+
+  @@unique([studioOwnerId, phone])
+  @@index([studioOwnerId])
+  @@index([phone])
+  @@index([deletedAt])
+  @@map("customers")
+}
+
+// ─── FCM Tokens ──────────────────────────────────────────────────────────────
+
+model FcmToken {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  customerId String?  @map("customer_id")
+  token      String   @unique
+  platform   String   // "android" | "ios"
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([userId])
+  @@map("fcm_tokens")
+}
+
+// ─── Galleries ───────────────────────────────────────────────────────────────
+
+model Gallery {
+  id              String    @id @default(uuid())
+  studioOwnerId   String    @map("studio_owner_id")
+  customerId      String?   @map("customer_id")
+  name            String
+  downloadEnabled Boolean   @default(false) @map("download_enabled")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  studioOwner  User          @relation(fields: [studioOwnerId], references: [id], onDelete: Restrict)
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  folders      Folder[]
+  mediaFiles   MediaFile[]
+  qrLinks      QrLink[]
+  galleryViews GalleryView[]
+
+  @@index([studioOwnerId])
+  @@index([customerId])
+  @@index([deletedAt])
+  @@map("galleries")
+}
+
+// ─── Folders ─────────────────────────────────────────────────────────────────
+
+model Folder {
+  id        String    @id @default(uuid())
+  galleryId String    @map("gallery_id")
+  parentId  String?   @map("parent_id")
+  name      String
+  depth     Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  gallery    Gallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  parent     Folder?    @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Restrict)
+  children   Folder[]   @relation("FolderChildren")
+  mediaFiles MediaFile[]
+  qrLinks    QrLink[]
+
+  @@index([galleryId])
+  @@index([parentId])
+  @@index([deletedAt])
+  @@map("folders")
+}
+
+// ─── Media Files ─────────────────────────────────────────────────────────────
+
+model MediaFile {
+  id                 String    @id @default(uuid())
+  galleryId          String    @map("gallery_id")
+  folderId           String?   @map("folder_id")
+  cloudinaryPublicId String    @map("cloudinary_public_id")
+  secureUrl          String    @map("secure_url")
+  thumbnailUrl       String    @map("thumbnail_url")
+  mediaType          MediaType @map("media_type")
+  mimeType           String    @map("mime_type")
+  fileSize           Int       @map("file_size")
+  width              Int?
+  height             Int?
+  durationSeconds    Float?    @map("duration_seconds")
+  downloadCount      Int       @default(0) @map("download_count")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  gallery   Gallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  folder    Folder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  favorites Favorite[]
+  qrLinks   QrLink[]
+
+  @@index([galleryId])
+  @@index([folderId])
+  @@index([deletedAt])
+  @@map("media_files")
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+// ─── QR Links ────────────────────────────────────────────────────────────────
+
+model QrLink {
+  id          String       @id @default(uuid())
+  galleryId   String       @map("gallery_id")
+  folderId    String?      @map("folder_id")
+  mediaFileId String?      @map("media_file_id")
+  token       String       @unique
+  status      QrLinkStatus @default(ACTIVE)
+  revokedAt   DateTime?    @map("revoked_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  gallery   Gallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  folder    Folder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  mediaFile MediaFile? @relation(fields: [mediaFileId], references: [id], onDelete: SetNull)
+
+  @@index([token])
+  @@index([galleryId])
+  @@index([folderId])
+  @@index([mediaFileId])
+  @@map("qr_links")
+}
+
+enum QrLinkStatus {
+  ACTIVE
+  REVOKED
+}
+
+// ─── Gallery Views ────────────────────────────────────────────────────────────
+
+model GalleryView {
+  id            String   @id @default(uuid())
+  galleryId     String   @map("gallery_id")
+  customerId    String   @map("customer_id")
+  firstViewedAt DateTime @map("first_viewed_at")
+  lastViewedAt  DateTime @map("last_viewed_at")
+  viewCount     Int      @default(0) @map("view_count")
+
+  gallery  Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([galleryId, customerId])
+  @@index([galleryId])
+  @@index([customerId])
+  @@map("gallery_views")
+}
+
+// ─── Favorites ────────────────────────────────────────────────────────────────
+
+model Favorite {
+  id          String    @id @default(uuid())
+  customerId  String?   @map("customer_id")
+  userId      String?   @map("user_id")
+  mediaFileId String    @map("media_file_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaFile MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, mediaFileId])
+  @@unique([userId, mediaFileId])
+  @@index([customerId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id         String             @id @default(uuid())
+  customerId String             @map("customer_id")
+  galleryId  String             @map("gallery_id")
+  type       NotificationType
+  payload    Json
+  status     NotificationStatus @default(PENDING)
+  attempts   Int                @default(0)
+  sentAt     DateTime?          @map("sent_at")
+  failedAt   DateTime?          @map("failed_at")
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([status])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  GALLERY_READY
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
