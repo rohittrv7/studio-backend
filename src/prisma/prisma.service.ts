@@ -11,10 +11,11 @@ import { Pool } from 'pg';
  */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(PrismaService.name);
+  private readonly logger: Logger;
   private readonly _pool: Pool;
 
   constructor() {
+    const logger = new Logger(PrismaService.name);
     let connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error('DATABASE_URL environment variable is not set.');
@@ -22,7 +23,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     try {
       const parsedUrl = new URL(connectionString);
-      this.logger.log(`Prisma connecting to database: "${parsedUrl.pathname.replace('/', '')}" on host: "${parsedUrl.host}" as user: "${parsedUrl.username}"`);
+      logger.log(`Prisma connecting to database: "${parsedUrl.pathname.replace('/', '')}" on host: "${parsedUrl.host}" as user: "${parsedUrl.username}"`);
       parsedUrl.searchParams.set('schema', 'studio_gallery');
       parsedUrl.searchParams.delete('options');
       connectionString = parsedUrl.toString();
@@ -34,13 +35,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     
     // Set search_path on connection startup, fully compatible with Neon pooler.
     pool.on('connect', (client) => {
-      this.logger.log('Database connection pool established a new physical connection.');
+      logger.log('Database connection pool established a new physical connection.');
       client.query('SET search_path TO studio_gallery, public;')
         .then(() => {
-          this.logger.log('Successfully set search_path to studio_gallery, public on connection.');
+          logger.log('Successfully set search_path to studio_gallery, public on connection.');
         })
         .catch((err) => {
-          this.logger.error('Failed to set search_path on client connect:', err);
+          logger.error('Failed to set search_path on client connect:', err);
         });
     });
 
@@ -49,6 +50,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     // Pass the adapter so PrismaClient knows how to connect.
     super({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 
+    this.logger = logger;
     this._pool = pool;
   }
 
