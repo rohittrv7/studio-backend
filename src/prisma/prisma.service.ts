@@ -22,6 +22,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     try {
       const parsedUrl = new URL(connectionString);
+      this.logger.log(`Prisma connecting to database: "${parsedUrl.pathname.replace('/', '')}" on host: "${parsedUrl.host}" as user: "${parsedUrl.username}"`);
       parsedUrl.searchParams.set('schema', 'studio_gallery');
       parsedUrl.searchParams.delete('options');
       connectionString = parsedUrl.toString();
