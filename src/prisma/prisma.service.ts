@@ -14,9 +14,18 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly _pool: Pool;
 
   constructor() {
-    const connectionString = process.env.DATABASE_URL;
+    let connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error('DATABASE_URL environment variable is not set.');
+    }
+
+    try {
+      const parsedUrl = new URL(connectionString);
+      parsedUrl.searchParams.set('schema', 'studio_gallery');
+      parsedUrl.searchParams.set('options', '-c search_path=studio_gallery');
+      connectionString = parsedUrl.toString();
+    } catch (e) {
+      // Fallback
     }
 
     const pool = new Pool({ connectionString });
