@@ -31,7 +31,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       // Fallback
     }
 
-    const pool = new Pool({ connectionString });
+    const pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+    });
     
     // Set search_path on connection startup, fully compatible with Neon pooler.
     pool.on('connect', (client) => {
