@@ -24,25 +24,25 @@ const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof Pris
 
 // ── Cloudinary sample images (public, no auth needed) ──────────────────────
 const COVER_IMAGES = [
-  'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80',
-  'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=800&q=80',
-  'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&q=80',
-  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800&q=80',
+  'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80', // Sunset couple
+  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800&q=80', // Bride laughing
+  'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80', // Groom getting ready
+  'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=800&q=80', // Table detail
 ];
 
 const PHOTO_URLS = [
-  'https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=90',
-  'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1200&q=90',
-  'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200&q=90',
-  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200&q=90',
-  'https://images.unsplash.com/photo-1494972308805-463bc619d34e?w=1200&q=90',
-  'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200&q=90',
-  'https://images.unsplash.com/photo-1439539698758-ba2680ecadb9?w=1200&q=90',
-  'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=1200&q=90',
-  'https://images.unsplash.com/photo-1529634806980-85c3dd6d34ac?w=1200&q=90',
-  'https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200&q=90',
-  'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1200&q=90',
-  'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=1200&q=90',
+  'https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=90', // Sunset couple
+  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200&q=90', // Bride laughing
+  'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=1200&q=90', // Groom getting ready
+  'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=1200&q=90', // Table detail
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=1200&q=90', // Portrait close
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=1200&q=90', // Dreamy outdoor portrait
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&q=90', // Fashion model
+  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=90', // Mountain couple
+  'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1200&q=90', // Jewelry hands detail
+  'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=1200&q=90', // Rings closeup
+  'https://images.unsplash.com/photo-1519225495810-7517c2965a7d?w=1200&q=90', // Couple holding hands
+  'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=1200&q=90', // Romantic sparklers
 ];
 
 const THUMB_URLS = PHOTO_URLS.map((u) => u.replace('w=1200', 'w=400'));

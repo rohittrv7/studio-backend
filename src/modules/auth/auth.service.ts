@@ -93,7 +93,7 @@ export class AuthService {
               phone: dto.phone,
               firebaseUid: `pending_${dto.phone}`,
               name: 'User',
-              role: 'STUDIO_OWNER',
+              role: 'CUSTOMER',
             },
           });
           this.logger.log(`Auto-created user account for customer self-registration: ${dto.phone}`);
@@ -247,8 +247,9 @@ export class AuthService {
         data: { firebaseUid, failedOtpAttempts: 0, isLocked: false, lockedUntil: null },
       });
 
+      const roleMapped = user.role === 'CUSTOMER' ? 'customer' : 'studio_owner';
       const galleryIds = user.galleries.map((g) => g.id);
-      const accessToken = this.signAccessToken(user.id, 'studio_owner', galleryIds);
+      const accessToken = this.signAccessToken(user.id, roleMapped, galleryIds);
       const { token: refreshToken } = await this.createRefreshToken({
         userId: user.id,
       });
@@ -257,7 +258,7 @@ export class AuthService {
         accessToken,
         refreshToken,
         expiresIn: ACCESS_TOKEN_SECONDS,
-        user: { id: user.id, name: user.name, email: user.email, profilePhoto: user.profilePhoto, role: 'studio_owner', galleryIds },
+        user: { id: user.id, name: user.name, email: user.email, profilePhoto: user.profilePhoto, role: roleMapped, galleryIds },
       };
     }
   }
@@ -289,8 +290,9 @@ export class AuthService {
       });
       if (!user) throw new UnauthorizedException('User not found');
 
+      const roleMapped = user.role === 'CUSTOMER' ? 'customer' : 'studio_owner';
       const galleryIds = user.galleries.map((g) => g.id);
-      const accessToken = this.signAccessToken(user.id, 'studio_owner', galleryIds);
+      const accessToken = this.signAccessToken(user.id, roleMapped, galleryIds);
       const { token: refreshToken } = await this.createRefreshToken({ userId: user.id });
 
       return { accessToken, refreshToken, expiresIn: ACCESS_TOKEN_SECONDS };
@@ -445,28 +447,53 @@ export class AuthService {
       const customer = await this.prisma.customer.findFirst({
         where: { phone, deletedAt: null },
       });
-      if (!customer) return;
+      if (customer) {
+        const newCount = customer.failedOtpAttempts + 1;
+        const shouldLock = newCount >= MAX_FAILED_ATTEMPTS;
+        const lockedUntil = shouldLock
+          ? new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000)
+          : null;
 
-      const newCount = customer.failedOtpAttempts + 1;
-      const shouldLock = newCount >= MAX_FAILED_ATTEMPTS;
-      const lockedUntil = shouldLock
-        ? new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000)
-        : null;
+        await this.prisma.customer.update({
+          where: { id: customer.id },
+          data: {
+            failedOtpAttempts: newCount,
+            isLocked: shouldLock,
+            lockedUntil,
+          },
+        });
 
-      await this.prisma.customer.update({
-        where: { id: customer.id },
-        data: {
-          failedOtpAttempts: newCount,
-          isLocked: shouldLock,
-          lockedUntil,
-        },
-      });
+        if (shouldLock) {
+          throw new HttpException(
+            'Too many failed attempts. Account locked for 30 minutes.',
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+        }
+      } else {
+        const user = await this.prisma.user.findUnique({ where: { phone } });
+        if (!user) return;
 
-      if (shouldLock) {
-        throw new HttpException(
-          'Too many failed attempts. Account locked for 30 minutes.',
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
+        const newCount = user.failedOtpAttempts + 1;
+        const shouldLock = newCount >= MAX_FAILED_ATTEMPTS;
+        const lockedUntil = shouldLock
+          ? new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000)
+          : null;
+
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedOtpAttempts: newCount,
+            isLocked: shouldLock,
+            lockedUntil,
+          },
+        });
+
+        if (shouldLock) {
+          throw new HttpException(
+            'Too many failed attempts. Account locked for 30 minutes.',
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+        }
       }
     }
   }
@@ -492,9 +519,9 @@ export class AuthService {
       // Add sample photos
       const samplePhotos = [
         'https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=90',
-        'https://images.unsplash.com/photo-1532712938310-34cb3982ef74?w=1200&q=90',
-        'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200&q=90',
-        'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=1200&q=90',
+        'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200&q=90',
+        'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=1200&q=90',
+        'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=1200&q=90',
       ];
 
       for (let i = 0; i < samplePhotos.length; i++) {
@@ -521,7 +548,7 @@ export class AuthService {
           folderId: videoFolder.id,
           cloudinaryPublicId: `sample/video_1_${Date.now()}`,
           secureUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-          thumbnailUrl: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400&q=80',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400&q=80',
           mediaType: 'VIDEO',
           mimeType: 'video/mp4',
           fileSize: 15000000,
@@ -542,7 +569,9 @@ export class AuthService {
     role: string,
     dto: UpdateProfileDto,
   ): Promise<{ id: string; name: string; email: string | null; profilePhoto: string | null; role: string; galleryIds: string[] }> {
-    if (role === 'studio_owner') {
+    const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (userExists) {
       const user = await this.prisma.user.update({
         where: { id: userId },
         data: {
@@ -557,62 +586,66 @@ export class AuthService {
         name: user.name,
         email: user.email,
         profilePhoto: user.profilePhoto,
-        role: 'studio_owner',
+        role: user.role.toLowerCase(),
         galleryIds: user.galleries.map((g) => g.id),
       };
-    } else {
-      const customer = await this.prisma.customer.update({
-        where: { id: userId },
-        data: {
-          name: dto.name,
-          email: dto.email,
-          profilePhoto: dto.profilePhoto,
-        },
-        include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
-      });
-      return {
-        id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        profilePhoto: customer.profilePhoto,
-        role: 'customer',
-        galleryIds: customer.galleries.map((g) => g.id),
-      };
     }
+
+    const customerExists = await this.prisma.customer.findFirst({ where: { id: userId, deletedAt: null } });
+    if (!customerExists) throw new NotFoundException('Account not found');
+
+    const customer = await this.prisma.customer.update({
+      where: { id: userId },
+      data: {
+        name: dto.name,
+        email: dto.email,
+        profilePhoto: dto.profilePhoto,
+      },
+      include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
+    });
+    return {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      profilePhoto: customer.profilePhoto,
+      role: 'customer',
+      galleryIds: customer.galleries.map((g) => g.id),
+    };
   }
 
   async getProfile(
     userId: string,
     role: string,
   ): Promise<{ id: string; name: string; email: string | null; profilePhoto: string | null; role: string; galleryIds: string[] }> {
-    if (role === 'studio_owner') {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
-      });
-      if (!user) throw new NotFoundException('User not found');
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
+    });
+
+    if (user) {
       return {
         id: user.id,
         name: user.name,
         email: user.email,
         profilePhoto: user.profilePhoto,
-        role: 'studio_owner',
+        role: user.role.toLowerCase(),
         galleryIds: user.galleries.map((g) => g.id),
       };
-    } else {
-      const customer = await this.prisma.customer.findFirst({
-        where: { id: userId, deletedAt: null },
-        include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
-      });
-      if (!customer) throw new NotFoundException('Customer not found');
-      return {
-        id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        profilePhoto: customer.profilePhoto,
-        role: 'customer',
-        galleryIds: customer.galleries.map((g) => g.id),
-      };
     }
+
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: userId, deletedAt: null },
+      include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
+    });
+    if (!customer) throw new NotFoundException('Account not found');
+
+    return {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      profilePhoto: customer.profilePhoto,
+      role: 'customer',
+      galleryIds: customer.galleries.map((g) => g.id),
+    };
   }
 }
