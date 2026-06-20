@@ -23,11 +23,21 @@ model User {
   updatedAt         DateTime  @updatedAt @map("updated_at")
   deletedAt         DateTime? @map("deleted_at")
 
-  customers     Customer[]
-  galleries     Gallery[]
-  refreshTokens RefreshToken[]
-  fcmTokens     FcmToken[]
-  favorites     Favorite[]
+  // Studios and Booking additions
+  studioName        String?   @map("studio_name")
+  location          String?
+  description       String?
+  latitude          Float?
+  longitude         Float?
+
+  customers         Customer[]
+  galleries         Gallery[]
+  refreshTokens     RefreshToken[]
+  fcmTokens         FcmToken[]
+  favorites         Favorite[]
+  plans             Plan[]
+  bookingsAsCustomer Booking[] @relation("BookingsAsCustomer")
+  bookingsAsStudio   Booking[] @relation("BookingsAsStudio")
 
   @@index([phone])
   @@index([deletedAt])
@@ -283,10 +293,58 @@ model Notification {
 
 enum NotificationType {
   GALLERY_READY
+  BOOKING_CREATED
+  BOOKING_STATUS_CHANGED
 }
 
 enum NotificationStatus {
   PENDING
   SENT
   FAILED
+}
+
+// ─── Plans ───────────────────────────────────────────────────────────────────
+
+model Plan {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  name        String
+  price       Float
+  description String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+
+  @@map("plans")
+}
+
+// ─── Bookings ─────────────────────────────────────────────────────────────────
+
+model Booking {
+  id            String        @id @default(uuid())
+  customerId    String        @map("customer_id")
+  studioOwnerId String        @map("studio_owner_id")
+  planId        String        @map("plan_id")
+  bookingDate   DateTime      @map("booking_date")
+  shootAddress  String        @map("shoot_address")
+  totalPrice    Float         @map("total_price")
+  advancePaid   Float         @map("advance_paid")
+  status        BookingStatus @default(PENDING)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  customer    User          @relation("BookingsAsCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  studioOwner User          @relation("BookingsAsStudio", fields: [studioOwnerId], references: [id], onDelete: Cascade)
+  plan        Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@map("bookings")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  COMPLETED
 }

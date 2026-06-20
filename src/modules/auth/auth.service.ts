@@ -568,7 +568,17 @@ export class AuthService {
     userId: string,
     role: string,
     dto: UpdateProfileDto,
-  ): Promise<{ id: string; name: string; email: string | null; profilePhoto: string | null; role: string; galleryIds: string[] }> {
+  ): Promise<{
+    id: string;
+    name: string;
+    email: string | null;
+    profilePhoto: string | null;
+    role: string;
+    galleryIds: string[];
+    studioName?: string | null;
+    location?: string | null;
+    description?: string | null;
+  }> {
     const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
 
     if (userExists) {
@@ -578,6 +588,9 @@ export class AuthService {
           name: dto.name,
           email: dto.email,
           profilePhoto: dto.profilePhoto,
+          studioName: dto.studioName,
+          location: dto.location,
+          description: dto.description,
         },
         include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
       });
@@ -588,6 +601,9 @@ export class AuthService {
         profilePhoto: user.profilePhoto,
         role: user.role.toLowerCase(),
         galleryIds: user.galleries.map((g) => g.id),
+        studioName: user.studioName,
+        location: user.location,
+        description: user.description,
       };
     }
 
@@ -616,7 +632,17 @@ export class AuthService {
   async getProfile(
     userId: string,
     role: string,
-  ): Promise<{ id: string; name: string; email: string | null; profilePhoto: string | null; role: string; galleryIds: string[] }> {
+  ): Promise<{
+    id: string;
+    name: string;
+    email: string | null;
+    profilePhoto: string | null;
+    role: string;
+    galleryIds: string[];
+    studioName?: string | null;
+    location?: string | null;
+    description?: string | null;
+  }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { galleries: { where: { deletedAt: null }, select: { id: true } } },
@@ -630,6 +656,9 @@ export class AuthService {
         profilePhoto: user.profilePhoto,
         role: user.role.toLowerCase(),
         galleryIds: user.galleries.map((g) => g.id),
+        studioName: user.studioName,
+        location: user.location,
+        description: user.description,
       };
     }
 

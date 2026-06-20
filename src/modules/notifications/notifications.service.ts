@@ -206,6 +206,43 @@ export class NotificationsService {
     }
   }
 
+  async sendPushNotification(
+    targetUserId: string,
+    title: string,
+    body: string,
+    payload: Record<string, string>,
+  ): Promise<void> {
+    const fcmTokenRows = await this.prisma.fcmToken.findMany({
+      where: {
+        OR: [
+          { userId: targetUserId },
+          { customerId: targetUserId },
+        ],
+      },
+      select: { token: true },
+    });
+
+    if (fcmTokenRows.length === 0) {
+      this.logger.warn(`[notifications] no FCM tokens for targetUserId=${targetUserId}; skipping`);
+      return;
+    }
+
+    const tokens = fcmTokenRows.map((r) => r.token);
+    for (const token of tokens) {
+      const message = {
+        token,
+        notification: { title, body },
+        data: payload,
+      };
+      try {
+        await getMessaging().send(message);
+        this.logger.log(`[notifications] sent notification to token successfully`);
+      } catch (err) {
+        this.logger.error(`[notifications] FCM delivery failed for targetUserId=${targetUserId}`, err);
+      }
+    }
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   /** Extracts the FCM error code from a firebase-admin error, if present. */

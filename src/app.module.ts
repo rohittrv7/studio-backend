@@ -16,6 +16,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { MediaModule } from './modules/media/media.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { PlansModule } from './modules/plans/plans.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { StudiosModule } from './modules/studios/studios.module';
 
 @Module({
   imports: [
@@ -37,6 +40,9 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     AnalyticsModule,
     NotificationsModule,
     MediaModule,
+    PlansModule,
+    BookingsModule,
+    StudiosModule,
   ],
   controllers: [AppController],
   providers: [

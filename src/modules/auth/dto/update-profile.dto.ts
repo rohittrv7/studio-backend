@@ -17,4 +17,19 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   profilePhoto?: string;
+
+  @ApiPropertyOptional({ example: 'My Photo Studio' })
+  @IsOptional()
+  @IsString()
+  studioName?: string;
+
+  @ApiPropertyOptional({ example: 'Mumbai' })
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @ApiPropertyOptional({ example: 'Professional photography services' })
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
