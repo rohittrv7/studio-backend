@@ -193,7 +193,17 @@ export class AuthService {
         accessToken,
         refreshToken,
         expiresIn: ACCESS_TOKEN_SECONDS,
-        user: { id: user.id, name: user.name, email: user.email, profilePhoto: user.profilePhoto, role: 'studio_owner', galleryIds },
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          profilePhoto: user.profilePhoto,
+          role: 'studio_owner',
+          galleryIds,
+          studioName: user.studioName,
+          location: user.location,
+          description: user.description,
+        },
       };
     } else {
       const customer = await this.prisma.customer.findFirst({
@@ -258,7 +268,17 @@ export class AuthService {
         accessToken,
         refreshToken,
         expiresIn: ACCESS_TOKEN_SECONDS,
-        user: { id: user.id, name: user.name, email: user.email, profilePhoto: user.profilePhoto, role: roleMapped, galleryIds },
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          profilePhoto: user.profilePhoto,
+          role: roleMapped,
+          galleryIds,
+          studioName: user.studioName,
+          location: user.location,
+          description: user.description,
+        },
       };
     }
   }
