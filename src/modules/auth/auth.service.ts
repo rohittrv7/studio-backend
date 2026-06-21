@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   UnauthorizedException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -240,17 +241,47 @@ export class AuthService {
           data: { firebaseUid, failedOtpAttempts: 0, isLocked: false, lockedUntil: null },
         });
 
-        const galleryIds = customer.galleries.map((g) => g.id);
-        const accessToken = this.signAccessToken(customer.id, 'customer', galleryIds);
+        // Ensure they also have a User record in the `users` table so bookings work
+        let customerUser = await this.prisma.user.findFirst({
+          where: { phone: dto.phone },
+        });
+        if (!customerUser) {
+          customerUser = await this.prisma.user.create({
+            data: {
+              phone: dto.phone,
+              firebaseUid: firebaseUid || `customer_${customer.id}`,
+              name: customer.name,
+              email: customer.email,
+              profilePhoto: customer.profilePhoto,
+              role: 'CUSTOMER',
+            },
+          });
+        }
+
+        // Fetch all galleries where customer.phone == dto.phone
+        const allCustomerGalleries = await this.prisma.gallery.findMany({
+          where: { customer: { phone: dto.phone }, deletedAt: null },
+          select: { id: true },
+        });
+        const galleryIds = allCustomerGalleries.map((g) => g.id);
+
+        const accessToken = this.signAccessToken(customerUser.id, 'customer', galleryIds);
         const { token: refreshToken } = await this.createRefreshToken({
-          customerId: customer.id,
+          userId: customerUser.id,
         });
 
         return {
           accessToken,
           refreshToken,
           expiresIn: ACCESS_TOKEN_SECONDS,
-          user: { id: customer.id, name: customer.name, email: customer.email, profilePhoto: customer.profilePhoto, role: 'customer', galleryIds },
+          user: { 
+            id: customerUser.id, 
+            name: customerUser.name, 
+            email: customerUser.email, 
+            profilePhoto: customerUser.profilePhoto, 
+            role: 'customer', 
+            galleryIds 
+          },
         };
       }
 
@@ -278,7 +309,19 @@ export class AuthService {
       });
 
       const roleMapped = user.role === 'CUSTOMER' ? 'customer' : 'studio_owner';
-      const galleryIds = user.galleries.map((g) => g.id);
+      
+      // Fetch all galleries by phone for customer role
+      let galleryIds: string[] = [];
+      if (roleMapped === 'customer') {
+        const allCustomerGalleries = await this.prisma.gallery.findMany({
+          where: { customer: { phone: dto.phone }, deletedAt: null },
+          select: { id: true },
+        });
+        galleryIds = allCustomerGalleries.map((g) => g.id);
+      } else {
+        galleryIds = user.galleries.map((g) => g.id);
+      }
+
       const accessToken = this.signAccessToken(user.id, roleMapped, galleryIds);
       const { token: refreshToken } = await this.createRefreshToken({
         userId: user.id,
@@ -622,11 +665,21 @@ export class AuthService {
     const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
 
     if (userExists) {
+      if (dto.phone && dto.phone !== userExists.phone) {
+        const phoneTaken = await this.prisma.user.findFirst({
+          where: { phone: dto.phone, id: { not: userId } },
+        });
+        if (phoneTaken) {
+          throw new BadRequestException('Phone number is already in use');
+        }
+      }
+
       const user = await this.prisma.user.update({
         where: { id: userId },
         data: {
           name: dto.name,
           email: dto.email,
+          phone: dto.phone,
           profilePhoto: dto.profilePhoto,
           studioName: dto.studioName,
           location: dto.location,
@@ -650,11 +703,21 @@ export class AuthService {
     const customerExists = await this.prisma.customer.findFirst({ where: { id: userId, deletedAt: null } });
     if (!customerExists) throw new NotFoundException('Account not found');
 
+    if (dto.phone && dto.phone !== customerExists.phone) {
+      const phoneTaken = await this.prisma.customer.findFirst({
+        where: { phone: dto.phone, studioOwnerId: customerExists.studioOwnerId, id: { not: userId } },
+      });
+      if (phoneTaken) {
+        throw new BadRequestException('Phone number is already in use by another customer in this studio');
+      }
+    }
+
     const customer = await this.prisma.customer.update({
       where: { id: userId },
       data: {
         name: dto.name,
         email: dto.email,
+        phone: dto.phone,
         profilePhoto: dto.profilePhoto,
       },
       include: { galleries: { where: { deletedAt: null }, select: { id: true } } },

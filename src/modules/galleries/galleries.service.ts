@@ -40,9 +40,25 @@ export class GalleriesService {
 
   async findAll(userId: string, role: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
-    const where = role === 'studio_owner'
-      ? { studioOwnerId: userId, deletedAt: null }
-      : { customerId: userId, deletedAt: null };
+    let where: any = { deletedAt: null };
+    if (role === 'studio_owner') {
+      where.studioOwnerId = userId;
+    } else {
+      let phone = '';
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user) {
+        phone = user.phone;
+      } else {
+        const customer = await this.prisma.customer.findUnique({ where: { id: userId } });
+        if (customer) {
+          phone = customer.phone;
+        }
+      }
+      where.OR = [
+        { customerId: userId },
+        { customer: { phone } },
+      ];
+    }
 
     const [galleries, total] = await Promise.all([
       this.prisma.gallery.findMany({
@@ -124,8 +140,20 @@ export class GalleriesService {
         throw new ForbiddenException('Access denied');
       }
     } else {
-      // customer role — must be the assigned customer OR have active QR link
-      if (gallery.customerId !== requestingUser.sub) {
+      // customer role — must be the assigned customer OR have active QR link OR phone matches
+      let phone = '';
+      const user = await this.prisma.user.findUnique({ where: { id: requestingUser.sub } });
+      if (user) {
+        phone = user.phone;
+      } else {
+        const customer = await this.prisma.customer.findUnique({ where: { id: requestingUser.sub } });
+        if (customer) {
+          phone = customer.phone;
+        }
+      }
+
+      const isAssigned = gallery.customerId === requestingUser.sub || (gallery.customer && gallery.customer.phone === phone);
+      if (!isAssigned) {
         const activeQr = await this.prisma.qrLink.findFirst({
           where: { galleryId: id, status: 'ACTIVE' },
         });
@@ -162,12 +190,14 @@ export class GalleriesService {
         ...(dto.downloadEnabled !== undefined && {
           downloadEnabled: dto.downloadEnabled,
         }),
+        ...(dto.showcase !== undefined && { showcase: dto.showcase }),
       },
       select: {
         id: true,
         name: true,
         customerId: true,
         downloadEnabled: true,
+        showcase: true,
         createdAt: true,
         updatedAt: true,
       },

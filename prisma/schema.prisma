@@ -127,6 +127,7 @@ model Gallery {
   customerId      String?   @map("customer_id")
   name            String
   downloadEnabled Boolean   @default(false) @map("download_enabled")
+  showcase        Boolean   @default(false) @map("showcase")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
@@ -311,6 +312,8 @@ model Plan {
   name        String
   price       Float
   description String
+  duration    String?   @map("duration")
+  deliverables String?  @map("deliverables")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
@@ -332,6 +335,7 @@ model Booking {
   totalPrice    Float         @map("total_price")
   advancePaid   Float         @map("advance_paid")
   status        BookingStatus @default(PENDING)
+  isPaid        Boolean       @default(false) @map("is_paid")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 

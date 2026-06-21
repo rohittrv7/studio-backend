@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { validateEnvironment } from './config/env.validation';
@@ -22,6 +23,11 @@ const DEV_CORS_PATTERNS = [
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // High payload body limits for base64 media and photos
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ limit: '50mb', extended: true }));
+
   const configService = app.get(ConfigService);
   validateEnvironment(configService);
 

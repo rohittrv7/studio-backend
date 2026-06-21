@@ -126,4 +126,46 @@ export class BookingsService {
 
     return updated;
   }
+
+  async pay(customerId: string, id: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id, customerId },
+      include: {
+        plan: true,
+        studioOwner: { select: { studioName: true, name: true } },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id },
+      data: { isPaid: true },
+      include: {
+        plan: true,
+        studioOwner: {
+          select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true },
+        },
+      },
+    });
+
+    // Notify Studio Owner that advance has been paid
+    const dateString = new Date(booking.bookingDate).toLocaleDateString();
+    this.notificationsService.sendPushNotification(
+      booking.studioOwnerId,
+      'Advance Payment Received',
+      `Customer has paid the advance for booking on ${dateString}.`,
+      {
+        type: 'BOOKING_STATUS_CHANGED',
+        bookingId: booking.id,
+        status: booking.status,
+        isPaid: 'true',
+      },
+    ).catch(() => {});
+
+    return updated;
+  }
 }
+

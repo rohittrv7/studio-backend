@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class StudiosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(location?: string) {
+  async findAll(location?: string, bookingDate?: string) {
     const where: any = {
       role: 'STUDIO_OWNER',
       studioName: { not: null },
@@ -18,7 +18,7 @@ export class StudiosService {
       };
     }
 
-    return this.prisma.user.findMany({
+    let results = await this.prisma.user.findMany({
       where,
       select: {
         id: true,
@@ -29,10 +29,33 @@ export class StudiosService {
         studioName: true,
         location: true,
         description: true,
+        bookingsAsStudio: {
+          where: {
+            status: 'CONFIRMED',
+          },
+          select: {
+            bookingDate: true,
+          },
+        },
       },
       orderBy: { studioName: 'asc' },
     });
+
+    if (bookingDate) {
+      const searchTime = new Date(bookingDate).getTime();
+      const threeHoursMs = 3 * 60 * 60 * 1000;
+      results = results.filter(studio => {
+        const hasOverlap = studio.bookingsAsStudio.some(booking => {
+          const bookingTime = new Date(booking.bookingDate).getTime();
+          return Math.abs(bookingTime - searchTime) < threeHoursMs;
+        });
+        return !hasOverlap;
+      });
+    }
+
+    return results.map(({ bookingsAsStudio, ...rest }) => rest);
   }
+
 
   async findOne(id: string) {
     const studio = await this.prisma.user.findFirst({
@@ -55,6 +78,19 @@ export class StudiosService {
     if (!studio) {
       throw new NotFoundException('Studio not found');
     }
+
+    // Find showcase galleries
+    const showcaseGalleries = await this.prisma.gallery.findMany({
+      where: { studioOwnerId: id, showcase: true, deletedAt: null },
+      include: {
+        _count: { select: { mediaFiles: { where: { deletedAt: null } } } },
+        mediaFiles: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+          select: { secureUrl: true, thumbnailUrl: true },
+        },
+      },
+    });
 
     // Find demo folder and media files
     let demoMedia: any[] = [];
@@ -79,6 +115,7 @@ export class StudiosService {
 
     return {
       ...studio,
+      showcaseGalleries,
       demoMedia,
     };
   }

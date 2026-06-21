@@ -39,4 +39,15 @@ export class BookingsController {
   ) {
     return this.bookingsService.updateStatus(user.sub, id, dto.status as BookingStatus);
   }
+
+  @Patch(':id/pay')
+  @Roles('customer')
+  @ApiOperation({ summary: 'Pay advance for booking (Customers only)' })
+  pay(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    return this.bookingsService.pay(user.sub, id);
+  }
 }
+

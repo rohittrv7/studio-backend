@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsNumber, Min, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePlanDto {
   @ApiProperty({ example: 'Basic Portfolio Photoshoot' })
@@ -16,4 +16,14 @@ export class CreatePlanDto {
   @IsString()
   @IsNotEmpty()
   description!: string;
+
+  @ApiPropertyOptional({ example: '4 Hours' })
+  @IsString()
+  @IsOptional()
+  duration?: string;
+
+  @ApiPropertyOptional({ example: '50 Edited Photos, Video Teaser' })
+  @IsString()
+  @IsOptional()
+  deliverables?: string;
 }

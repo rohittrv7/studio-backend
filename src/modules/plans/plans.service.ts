@@ -13,6 +13,8 @@ export class PlansService {
         name: dto.name,
         price: dto.price,
         description: dto.description,
+        duration: dto.duration,
+        deliverables: dto.deliverables,
       },
     });
   }

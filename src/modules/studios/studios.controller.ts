@@ -11,10 +11,14 @@ export class StudiosController {
   constructor(private readonly studiosService: StudiosService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all studio owners (public/auth, filtered by location)' })
-  findAll(@Query('location') location?: string) {
-    return this.studiosService.findAll(location);
+  @ApiOperation({ summary: 'List all studio owners (public/auth, filtered by location and date)' })
+  findAll(
+    @Query('location') location?: string,
+    @Query('bookingDate') bookingDate?: string,
+  ) {
+    return this.studiosService.findAll(location, bookingDate);
   }
+
 
   @Get(':id')
   @ApiOperation({ summary: 'Get details of a specific studio, its plans, and demo media' })

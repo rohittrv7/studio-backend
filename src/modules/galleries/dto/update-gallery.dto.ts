@@ -25,4 +25,12 @@ export class UpdateGalleryDto {
   @IsBoolean()
   @IsOptional()
   downloadEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Whether this gallery should be showcased in the studio owner portfolio profile',
+  })
+  @IsBoolean()
+  @IsOptional()
+  showcase?: boolean;
 }
