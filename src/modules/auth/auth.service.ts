@@ -23,8 +23,16 @@ const LOCK_DURATION_MINUTES = 30;
 const REFRESH_TOKEN_DAYS = 30;
 const ACCESS_TOKEN_SECONDS = 3600;
 
+function sanitizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return digits.substring(2);
+  }
+  return digits.length > 10 ? digits.substring(digits.length - 10) : digits;
+}
+
 /** Demo accounts seeded in prisma/seed.ts — dev bypass only. */
-const DEMO_PHONES = new Set(['+911234567890', '+919876543210']);
+const DEMO_PHONES = new Set(['1234567890', '9876543210']);
 
 @Injectable()
 export class AuthService {
@@ -51,6 +59,7 @@ export class AuthService {
    * live in the Customer table and can still log in as 'customer'.
    */
   async sendOtp(dto: SendOtpDto): Promise<{ message: string; expiresInSeconds: number }> {
+    dto.phone = sanitizePhone(dto.phone);
     if (dto.userType === 'studio_owner') {
       // Find or auto-create the studio owner account.
       let user = await this.prisma.user.findUnique({
@@ -120,8 +129,19 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
     expiresIn: number;
-    user: { id: string; name: string; email?: string | null; profilePhoto?: string | null; role: string; galleryIds: string[] };
+    user: {
+      id: string;
+      name: string;
+      email?: string | null;
+      profilePhoto?: string | null;
+      role: string;
+      galleryIds: string[];
+      studioName?: string | null;
+      location?: string | null;
+      description?: string | null;
+    };
   }> {
+    dto.phone = sanitizePhone(dto.phone);
     // 1. Verify the Firebase ID token, dev OTP, or demo bypass (dev only).
     let firebaseUid: string;
     const isDemoBypass = this.isDemoBypassAllowed(dto.idToken, dto.phone);

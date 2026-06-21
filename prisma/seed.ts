@@ -65,10 +65,13 @@ async function main() {
   // ── Studio Owner ──────────────────────────────────────────────────────────
   const owner = await prisma.user.create({
     data: {
-      phone: '+911234567890',
+      phone: '1234567890',
       firebaseUid: 'demo_owner_uid',
       name: 'Rohit Sharma',
       role: 'STUDIO_OWNER',
+      studioName: 'Rohit Studio',
+      location: 'Mumbai',
+      description: 'Premium photography studio',
     },
   });
   console.log(`✅ Studio owner: ${owner.name} (${owner.phone})`);
@@ -77,7 +80,7 @@ async function main() {
   const customer = await prisma.customer.create({
     data: {
       studioOwnerId: owner.id,
-      phone: '+919876543210',
+      phone: '9876543210',
       name: 'Priya Kapoor',
       firebaseUid: 'demo_customer_uid',
     },
@@ -261,8 +264,8 @@ async function main() {
   console.log('\n🎉 Demo seed complete!');
   console.log('─────────────────────────────────────────');
   console.log('Login credentials:');
-  console.log('  Studio Owner → +911234567890');
-  console.log('  Customer     → +919876543210');
+  console.log('  Studio Owner → 1234567890');
+  console.log('  Customer     → 9876543210');
   console.log('  Demo bypass  → use phone number only (no real OTP needed)');
   console.log('─────────────────────────────────────────');
 }

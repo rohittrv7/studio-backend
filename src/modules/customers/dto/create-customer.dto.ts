@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsPhoneNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, Matches } from 'class-validator';
 
 export class CreateCustomerDto {
   @ApiProperty({
@@ -11,9 +11,9 @@ export class CreateCustomerDto {
   name!: string;
 
   @ApiProperty({
-    example: '+919876543210',
-    description: 'E.164-formatted phone number of the customer',
+    example: '9876543210',
+    description: 'Exactly 10-digit mobile number of the customer',
   })
-  @IsPhoneNumber()
+  @Matches(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits' })
   phone!: string;
 }

@@ -3,19 +3,19 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
-  IsPhoneNumber,
   IsString,
   Length,
+  Matches,
   ValidateIf,
 } from 'class-validator';
 import { UserType } from './send-otp.dto';
 
 export class VerifyOtpDto {
   @ApiProperty({
-    example: '+919876543210',
-    description: 'E.164-formatted phone number of the user',
+    example: '9876543210',
+    description: 'Exactly 10-digit mobile number of the user',
   })
-  @IsPhoneNumber()
+  @Matches(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits' })
   phone!: string;
 
   @ApiPropertyOptional({

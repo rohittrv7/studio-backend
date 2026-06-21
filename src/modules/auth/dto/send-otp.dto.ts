@@ -1,14 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsPhoneNumber } from 'class-validator';
+import { IsEnum, Matches } from 'class-validator';
 
 export type UserType = 'studio_owner' | 'customer';
 
 export class SendOtpDto {
   @ApiProperty({
-    example: '+919876543210',
-    description: 'E.164-formatted phone number of the user',
+    example: '9876543210',
+    description: 'Exactly 10-digit mobile number of the user',
   })
-  @IsPhoneNumber()
+  @Matches(/^\d{10}$/, { message: 'Phone number must be exactly 10 digits' })
   phone!: string;
 
   @ApiProperty({
