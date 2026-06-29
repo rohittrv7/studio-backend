@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreatePlanDto } from './plans.dto';
+import { CreatePlanDto, UpdatePlanDto } from './plans.dto';
 
 @Injectable()
 export class PlansService {
@@ -23,6 +23,27 @@ export class PlansService {
     return this.prisma.plan.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async update(userId: string, id: string, dto: UpdatePlanDto) {
+    const plan = await this.prisma.plan.findFirst({
+      where: { id, userId },
+    });
+
+    if (!plan) {
+      throw new NotFoundException(`Plan not found`);
+    }
+
+    return this.prisma.plan.update({
+      where: { id },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.price !== undefined && { price: dto.price }),
+        ...(dto.description && { description: dto.description }),
+        duration: dto.duration !== undefined ? dto.duration : plan.duration,
+        deliverables: dto.deliverables !== undefined ? dto.deliverables : plan.deliverables,
+      },
     });
   }
 

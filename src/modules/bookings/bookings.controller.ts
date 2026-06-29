@@ -37,7 +37,13 @@ export class BookingsController {
     @Param('id') id: string,
     @Body() dto: UpdateBookingStatusDto,
   ) {
-    return this.bookingsService.updateStatus(user.sub, id, dto.status as BookingStatus);
+    return this.bookingsService.updateStatus(
+      user.sub,
+      id,
+      dto.status as BookingStatus,
+      dto.isPaid,
+      dto.paymentMethod,
+    );
   }
 
   @Patch(':id/pay')

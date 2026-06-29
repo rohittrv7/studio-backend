@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Patch, Get, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -6,7 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { PlansService } from './plans.service';
-import { CreatePlanDto } from './plans.dto';
+import { CreatePlanDto, UpdatePlanDto } from './plans.dto';
 
 @ApiTags('plans')
 @Controller('plans')
@@ -27,6 +27,13 @@ export class PlansController {
   @ApiOperation({ summary: 'Get all plans for the logged-in studio owner' })
   getMyPlans(@CurrentUser() user: JwtPayload) {
     return this.plansService.getMyPlans(user.sub);
+  }
+
+  @Patch(':id')
+  @Roles('studio_owner')
+  @ApiOperation({ summary: 'Update a plan (Studio Owners only)' })
+  update(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: UpdatePlanDto) {
+    return this.plansService.update(user.sub, id, dto);
   }
 
   @Delete(':id')

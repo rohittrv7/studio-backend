@@ -164,4 +164,40 @@ export class AnalyticsService {
       mediaDownloads,
     };
   }
+
+  async getOverviewAnalytics(studioOwnerId: string) {
+    const galleries = await this.prisma.gallery.findMany({
+      where: { studioOwnerId, deletedAt: null },
+      select: { id: true },
+    });
+
+    const galleryIds = galleries.map((g) => g.id);
+    if (galleryIds.length === 0) {
+      return {
+        totalViews: 0,
+        totalDownloads: 0,
+        galleriesCount: 0,
+      };
+    }
+
+    const viewsCount = await this.prisma.galleryView.count({
+      where: { galleryId: { in: galleryIds } },
+    });
+
+    const mediaFiles = await this.prisma.mediaFile.findMany({
+      where: { galleryId: { in: galleryIds }, deletedAt: null },
+      select: { downloadCount: true },
+    });
+
+    const totalDownloads = mediaFiles.reduce(
+      (sum, file) => sum + (file.downloadCount ?? 0),
+      0,
+    );
+
+    return {
+      totalViews: viewsCount,
+      totalDownloads,
+      galleriesCount: galleryIds.length,
+    };
+  }
 }

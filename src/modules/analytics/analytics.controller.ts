@@ -56,6 +56,14 @@ export class AnalyticsController {
     return {};
   }
 
+  @Get('overview')
+  @Roles('studio_owner')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get overall aggregated analytics overview for studio owner' })
+  getOverviewAnalytics(@CurrentUser() user: JwtPayload) {
+    return this.analyticsService.getOverviewAnalytics(user.sub);
+  }
+
   // ─── Get gallery analytics (studio_owner) ────────────────────────────────
 
   /**

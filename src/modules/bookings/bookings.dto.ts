@@ -53,6 +53,16 @@ export class UpdateBookingStatusDto {
   @ApiProperty({ example: 'CONFIRMED', enum: UpdateStatus })
   @IsEnum(UpdateStatus)
   status!: UpdateStatus;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isPaid?: boolean;
+
+  @ApiPropertyOptional({ example: 'CASH' })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
 }
 
 export class SubmitPaymentDto {

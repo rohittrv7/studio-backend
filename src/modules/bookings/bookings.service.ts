@@ -34,6 +34,24 @@ export class BookingsService {
         throw new NotFoundException('Customer account not found');
       }
       customerName = customer.name;
+
+      // Ensure this customer is added to the studio owner's customer list
+      const existingCustomerMapping = await this.prisma.customer.findFirst({
+        where: {
+          studioOwnerId: plan.userId,
+          phone: customer.phone,
+        },
+      });
+
+      if (!existingCustomerMapping) {
+        await this.prisma.customer.create({
+          data: {
+            studioOwnerId: plan.userId,
+            name: customer.name,
+            phone: customer.phone,
+          },
+        });
+      }
     } else {
       // Studio Owner booking directly for a customer (potentially offline)
       if (dto.customerId) {
@@ -164,7 +182,13 @@ export class BookingsService {
     }
   }
 
-  async updateStatus(studioOwnerId: string, id: string, status: BookingStatus) {
+  async updateStatus(
+    studioOwnerId: string,
+    id: string,
+    status: BookingStatus,
+    isPaid?: boolean,
+    paymentMethod?: string,
+  ) {
     const booking = await this.prisma.booking.findFirst({
       where: { id, studioOwnerId },
       include: {
@@ -181,7 +205,8 @@ export class BookingsService {
       where: { id },
       data: {
         status,
-        isPaid: status === BookingStatus.CONFIRMED ? true : booking.isPaid,
+        isPaid: isPaid !== undefined ? isPaid : booking.isPaid,
+        paymentMethod: paymentMethod !== undefined ? paymentMethod : booking.paymentMethod,
       },
     });
 
