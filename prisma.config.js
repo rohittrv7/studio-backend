@@ -11,7 +11,7 @@ const config = defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres?schema=studio_gallery',
   },
 });
 
