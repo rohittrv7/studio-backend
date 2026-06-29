@@ -28,17 +28,39 @@ export class AnalyticsService {
    * On first view: sets firstViewedAt = now.
    * On subsequent views: updates lastViewedAt = now and increments viewCount.
    */
-  recordView(customerId: string, galleryId: string): void {
-    setImmediate(() => {
-      const now = new Date();
-      this.prisma.galleryView
-        .upsert({
+  recordView(userTableId: string, galleryId: string): void {
+    setImmediate(async () => {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userTableId },
+          select: { phone: true },
+        });
+        if (!user) return;
+
+        const gallery = await this.prisma.gallery.findUnique({
+          where: { id: galleryId },
+          select: { studioOwnerId: true },
+        });
+        if (!gallery) return;
+
+        const customer = await this.prisma.customer.findFirst({
           where: {
-            galleryId_customerId: { galleryId, customerId },
+            phone: user.phone,
+            studioOwnerId: gallery.studioOwnerId,
+          },
+          select: { id: true },
+        });
+
+        if (!customer) return;
+
+        const now = new Date();
+        await this.prisma.galleryView.upsert({
+          where: {
+            galleryId_customerId: { galleryId, customerId: customer.id },
           },
           create: {
             galleryId,
-            customerId,
+            customerId: customer.id,
             firstViewedAt: now,
             lastViewedAt: now,
             viewCount: 1,
@@ -47,11 +69,10 @@ export class AnalyticsService {
             lastViewedAt: now,
             viewCount: { increment: 1 },
           },
-        })
-        .catch((err: unknown) => {
-          // Log silently — analytics failures must not affect callers
-          console.error('[AnalyticsService] recordView failed:', err);
         });
+      } catch (err: unknown) {
+        console.error('[AnalyticsService] recordView failed:', err);
+      }
     });
   }
 
