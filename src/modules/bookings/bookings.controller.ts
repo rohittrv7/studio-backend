@@ -43,6 +43,7 @@ export class BookingsController {
       dto.status as BookingStatus,
       dto.isPaid,
       dto.paymentMethod,
+      dto.isFullPaid,
     );
   }
 

@@ -30,25 +30,39 @@ export class FavoritesService {
     mediaFileId: string,
   ): Promise<boolean> {
     const isStudio = role === 'studio_owner';
-    const mediaFile = await this.prisma.mediaFile.findFirst({
-      where: {
-        id: mediaFileId,
-        deletedAt: null,
-        gallery: {
+    if (isStudio) {
+      const mediaFile = await this.prisma.mediaFile.findFirst({
+        where: {
+          id: mediaFileId,
           deletedAt: null,
-          ...(isStudio
-            ? { studioOwnerId: userId }
-            : {
-                OR: [
-                  { customerId: userId },
-                  { studioOwnerId: userId },
-                ],
-              }),
+          gallery: {
+            deletedAt: null,
+            studioOwnerId: userId,
+          },
         },
-      },
-      select: { id: true },
-    });
-    return !!mediaFile;
+        select: { id: true },
+      });
+      return !!mediaFile;
+    } else {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      const phone = user?.phone || '';
+      const mediaFile = await this.prisma.mediaFile.findFirst({
+        where: {
+          id: mediaFileId,
+          deletedAt: null,
+          gallery: {
+            deletedAt: null,
+            OR: [
+              { customerId: userId },
+              { customer: { phone } },
+              { studioOwnerId: userId },
+            ],
+          },
+        },
+        select: { id: true },
+      });
+      return !!mediaFile;
+    }
   }
 
   private async assertMediaAccess(
@@ -69,25 +83,16 @@ export class FavoritesService {
   async add(userId: string, role: string, mediaFileId: string) {
     await this.assertMediaAccess(userId, role, mediaFileId);
 
-    const isStudio = role === 'studio_owner';
     const favorite = await this.prisma.favorite.upsert({
-      where: isStudio
-        ? { userId_mediaFileId: { userId, mediaFileId } }
-        : { customerId_mediaFileId: { customerId: userId, mediaFileId } },
-      create: isStudio
-        ? { userId, mediaFileId }
-        : { customerId: userId, mediaFileId },
-      update: {}, // no-op if already exists
+      where: { userId_mediaFileId: { userId, mediaFileId } },
+      create: { userId, mediaFileId },
+      update: {},
     });
 
-    // Post-check validation
     const stillValid = await this.checkMediaAccess(userId, role, mediaFileId);
     if (!stillValid) {
-      // Rollback
       await this.prisma.favorite.deleteMany({
-        where: isStudio
-          ? { userId, mediaFileId }
-          : { customerId: userId, mediaFileId },
+        where: { userId, mediaFileId },
       });
       throw new ForbiddenException(
         'Media file does not belong to a gallery assigned to you',
@@ -106,11 +111,8 @@ export class FavoritesService {
   async remove(userId: string, role: string, mediaFileId: string) {
     await this.assertMediaAccess(userId, role, mediaFileId);
 
-    const isStudio = role === 'studio_owner';
     await this.prisma.favorite.deleteMany({
-      where: isStudio
-        ? { userId, mediaFileId }
-        : { customerId: userId, mediaFileId },
+      where: { userId, mediaFileId },
     });
 
     return { message: 'Favorite removed successfully' };
@@ -119,29 +121,14 @@ export class FavoritesService {
   // ─── List ─────────────────────────────────────────────────────────────────
 
   async list(userId: string, role: string) {
-    const isStudio = role === 'studio_owner';
     const favorites = await this.prisma.favorite.findMany({
-      where: isStudio
-        ? {
-            userId,
-            mediaFile: {
-              deletedAt: null,
-              gallery: { deletedAt: null, studioOwnerId: userId },
-            },
-          }
-        : {
-            customerId: userId,
-            mediaFile: {
-              deletedAt: null,
-              gallery: {
-                deletedAt: null,
-                OR: [
-                  { customerId: userId },
-                  { studioOwnerId: userId },
-                ],
-              },
-            },
-          },
+      where: {
+        userId,
+        mediaFile: {
+          deletedAt: null,
+          gallery: { deletedAt: null },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         mediaFile: {

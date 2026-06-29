@@ -338,6 +338,7 @@ model Booking {
   advancePaid   Float         @map("advance_paid")
   status        BookingStatus @default(PENDING)
   isPaid        Boolean       @default(false) @map("is_paid")
+  isFullPaid    Boolean       @default(false) @map("is_full_paid")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
   paymentScreenshot String?     @map("payment_screenshot")

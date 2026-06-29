@@ -174,7 +174,7 @@ export class BookingsService {
         include: {
           plan: true,
           studioOwner: {
-            select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true },
+            select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true, upiId: true, upiQrCode: true },
           },
         },
         orderBy: { bookingDate: 'desc' },
@@ -188,6 +188,7 @@ export class BookingsService {
     status: BookingStatus,
     isPaid?: boolean,
     paymentMethod?: string,
+    isFullPaid?: boolean,
   ) {
     const booking = await this.prisma.booking.findFirst({
       where: { id, studioOwnerId },
@@ -206,7 +207,17 @@ export class BookingsService {
       data: {
         status,
         isPaid: isPaid !== undefined ? isPaid : booking.isPaid,
+        isFullPaid: isFullPaid !== undefined ? isFullPaid : booking.isFullPaid,
         paymentMethod: paymentMethod !== undefined ? paymentMethod : booking.paymentMethod,
+      },
+      include: {
+        plan: true,
+        customer: {
+          select: { id: true, name: true, phone: true, profilePhoto: true },
+        },
+        studioOwner: {
+          select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true, upiId: true, upiQrCode: true },
+        },
       },
     });
 
@@ -246,7 +257,7 @@ export class BookingsService {
       include: {
         plan: true,
         studioOwner: {
-          select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true },
+          select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true, upiId: true, upiQrCode: true },
         },
       },
     });
@@ -291,7 +302,7 @@ export class BookingsService {
       include: {
         plan: true,
         studioOwner: {
-          select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true },
+          select: { id: true, name: true, studioName: true, phone: true, profilePhoto: true, upiId: true, upiQrCode: true },
         },
       },
     });

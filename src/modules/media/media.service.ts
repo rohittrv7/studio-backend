@@ -273,7 +273,6 @@ export class MediaService {
     });
 
     if (!gallery) {
-      // Return 403 to avoid oracle attacks (don't reveal 404 vs 403)
       throw new ForbiddenException('Access denied');
     }
 
@@ -283,7 +282,20 @@ export class MediaService {
       }
     } else {
       // customer role — must be the assigned customer OR have active QR link
-      if (gallery.customerId !== requesterId) {
+      let isAssigned = gallery.customerId === requesterId;
+      if (!isAssigned && gallery.customerId) {
+        const user = await this.prisma.user.findUnique({ where: { id: requesterId } });
+        if (user) {
+          const customerMapping = await this.prisma.customer.findFirst({
+            where: { id: gallery.customerId, phone: user.phone },
+          });
+          if (customerMapping) {
+            isAssigned = true;
+          }
+        }
+      }
+
+      if (!isAssigned) {
         const activeQr = await this.prisma.qrLink.findFirst({
           where: { galleryId, status: 'ACTIVE' },
         });

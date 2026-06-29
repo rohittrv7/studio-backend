@@ -59,6 +59,11 @@ export class UpdateBookingStatusDto {
   @IsBoolean()
   isPaid?: boolean;
 
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isFullPaid?: boolean;
+
   @ApiPropertyOptional({ example: 'CASH' })
   @IsOptional()
   @IsString()
