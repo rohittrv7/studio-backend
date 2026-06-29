@@ -9,7 +9,7 @@
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
