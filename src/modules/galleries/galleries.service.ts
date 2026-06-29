@@ -259,7 +259,10 @@ export class GalleriesService {
 
     const updated = await this.prisma.gallery.update({
       where: { id },
-      data: { customerId: dto.customerId },
+      data: {
+        customerId: dto.customerId,
+        ...(dto.downloadEnabled !== undefined && { downloadEnabled: dto.downloadEnabled }),
+      },
       select: {
         id: true,
         customerId: true,

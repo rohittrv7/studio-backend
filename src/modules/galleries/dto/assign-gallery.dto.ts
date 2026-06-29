@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsUUID, IsOptional, IsBoolean } from 'class-validator';
 
 export class AssignGalleryDto {
   @ApiProperty({
@@ -9,4 +9,12 @@ export class AssignGalleryDto {
   @IsUUID()
   @IsNotEmpty()
   customerId!: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether client downloads are enabled',
+  })
+  @IsOptional()
+  @IsBoolean()
+  downloadEnabled?: boolean;
 }

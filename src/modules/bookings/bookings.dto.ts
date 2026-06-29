@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsDateString, IsEnum, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsDateString, IsEnum, IsOptional, IsBoolean } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBookingDto {
   @ApiProperty({ example: 'plan-uuid-here' })
@@ -16,6 +16,32 @@ export class CreateBookingDto {
   @IsString()
   @IsNotEmpty()
   shootAddress!: string;
+
+  // Optional fields for Studio Owner booking directly
+  @ApiPropertyOptional({ example: 'customer-uuid-here' })
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @ApiPropertyOptional({ example: 'Priya Sharma' })
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @ApiPropertyOptional({ example: '9876543210' })
+  @IsOptional()
+  @IsString()
+  customerPhone?: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isPaid?: boolean;
+
+  @ApiPropertyOptional({ example: 'CASH', description: 'CASH, UPI, or QR_CODE' })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
 }
 
 export enum UpdateStatus {
@@ -29,18 +55,6 @@ export class UpdateBookingStatusDto {
   status!: UpdateStatus;
 }
 
-export class VerifyPaymentDto {
-  @ApiProperty({ example: 'pay_NjE4MTI3OD' })
-  @IsString()
-  @IsNotEmpty()
-  razorpayPaymentId!: string;
-
-  @ApiProperty({ example: 'sig_a91b2c...' })
-  @IsString()
-  @IsNotEmpty()
-  razorpaySignature!: string;
-}
-
 export class SubmitPaymentDto {
   @ApiProperty({ example: 'UTR1234567890' })
   @IsString()
@@ -51,4 +65,9 @@ export class SubmitPaymentDto {
   @IsString()
   @IsOptional()
   paymentScreenshot?: string;
+
+  @ApiPropertyOptional({ example: 'CASH', description: 'CASH, UPI, or QR_CODE' })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
 }

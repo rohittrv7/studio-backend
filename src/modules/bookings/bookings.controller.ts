@@ -6,7 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { BookingsService } from './bookings.service';
-import { CreateBookingDto, UpdateBookingStatusDto, VerifyPaymentDto, SubmitPaymentDto } from './bookings.dto';
+import { CreateBookingDto, UpdateBookingStatusDto, SubmitPaymentDto } from './bookings.dto';
 import { BookingStatus } from '@prisma/client';
 
 @ApiTags('bookings')
@@ -17,10 +17,10 @@ export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
   @Post()
-  @Roles('customer')
-  @ApiOperation({ summary: 'Place a booking (Customers only)' })
+  @Roles('customer', 'studio_owner')
+  @ApiOperation({ summary: 'Place a booking' })
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateBookingDto) {
-    return this.bookingsService.create(user.sub, dto);
+    return this.bookingsService.create(user.sub, user.role, dto);
   }
 
   @Get('my-bookings')
@@ -48,32 +48,6 @@ export class BookingsController {
     @Param('id') id: string,
   ) {
     return this.bookingsService.pay(user.sub, id);
-  }
-
-  @Post(':id/payment-order')
-  @Roles('customer')
-  @ApiOperation({ summary: 'Generate a Razorpay payment order for booking advance (Customers only)' })
-  generatePaymentOrder(
-    @CurrentUser() user: JwtPayload,
-    @Param('id') id: string,
-  ) {
-    return this.bookingsService.generatePaymentOrder(user.sub, id);
-  }
-
-  @Post(':id/verify-payment')
-  @Roles('customer')
-  @ApiOperation({ summary: 'Verify Razorpay payment signature for booking advance (Customers only)' })
-  verifyPayment(
-    @CurrentUser() user: JwtPayload,
-    @Param('id') id: string,
-    @Body() dto: VerifyPaymentDto,
-  ) {
-    return this.bookingsService.verifyPayment(
-      user.sub,
-      id,
-      dto.razorpayPaymentId,
-      dto.razorpaySignature,
-    );
   }
 
   @Post(':id/submit-payment')

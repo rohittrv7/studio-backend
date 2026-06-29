@@ -692,8 +692,6 @@ export class AuthService {
           studioName: dto.studioName,
           location: dto.location,
           description: dto.description,
-          razorpayKeyId: dto.razorpayKeyId,
-          razorpayKeySecret: dto.razorpayKeySecret,
           upiId: dto.upiId,
           upiQrCode: dto.upiQrCode,
         },
@@ -709,8 +707,6 @@ export class AuthService {
         studioName: user.studioName,
         location: user.location,
         description: user.description,
-        razorpayKeyId: user.razorpayKeyId,
-        razorpayKeySecret: user.razorpayKeySecret,
         upiId: user.upiId,
         upiQrCode: user.upiQrCode,
       };
@@ -761,8 +757,6 @@ export class AuthService {
     studioName?: string | null;
     location?: string | null;
     description?: string | null;
-    razorpayKeyId?: string | null;
-    razorpayKeySecret?: string | null;
     upiId?: string | null;
     upiQrCode?: string | null;
   }> {
@@ -782,8 +776,6 @@ export class AuthService {
         studioName: user.studioName,
         location: user.location,
         description: user.description,
-        razorpayKeyId: user.razorpayKeyId,
-        razorpayKeySecret: user.razorpayKeySecret,
         upiId: user.upiId,
         upiQrCode: user.upiQrCode,
       };

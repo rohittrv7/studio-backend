@@ -29,8 +29,6 @@ model User {
   description       String?
   latitude          Float?
   longitude         Float?
-  razorpayKeyId     String?   @map("razorpay_key_id")
-  razorpayKeySecret String?   @map("razorpay_key_secret")
   upiId             String?   @map("upi_id")
   upiQrCode         String?   @map("upi_qr_code")
 
@@ -342,11 +340,9 @@ model Booking {
   isPaid        Boolean       @default(false) @map("is_paid")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
-  razorpayOrderId   String?     @map("razorpay_order_id")
-  razorpayPaymentId String?     @map("razorpay_payment_id")
-  razorpaySignature String?     @map("razorpay_signature")
   paymentScreenshot String?     @map("payment_screenshot")
   transactionRef    String?     @map("transaction_ref")
+  paymentMethod     String?     @map("payment_method")
 
   customer    User          @relation("BookingsAsCustomer", fields: [customerId], references: [id], onDelete: Cascade)
   studioOwner User          @relation("BookingsAsStudio", fields: [studioOwnerId], references: [id], onDelete: Cascade)

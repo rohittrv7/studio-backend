@@ -39,15 +39,6 @@ export class UpdateProfileDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: 'rzp_test_...' })
-  @IsOptional()
-  @IsString()
-  razorpayKeyId?: string;
-
-  @ApiPropertyOptional({ example: 'secret_...' })
-  @IsOptional()
-  @IsString()
-  razorpayKeySecret?: string;
 
   @ApiPropertyOptional({ example: 'studio@upi' })
   @IsOptional()
