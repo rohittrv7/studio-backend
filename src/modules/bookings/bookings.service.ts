@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CreateBookingDto } from './bookings.dto';
+import { CreateBookingDto, AddPaymentDto } from './bookings.dto';
 import { BookingStatus } from '@prisma/client';
 
 @Injectable()
@@ -139,6 +139,15 @@ export class BookingsService {
       },
     });
 
+    // Create Audit Log
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'BOOKING_CREATED',
+        details: `Booking created for plan "${plan.name}". Customer: ${customerName}. Total Price: ₹${totalPrice}.`,
+        userId: creatorId,
+      },
+    }).catch(err => console.error('Audit Log failed:', err));
+
     // Notify Studio Owner (only if customer placed the booking)
     if (role === 'customer') {
       const dateString = new Date(dto.bookingDate).toLocaleDateString();
@@ -220,6 +229,15 @@ export class BookingsService {
         },
       },
     });
+
+    // Create Audit Log
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'BOOKING_STATUS_CHANGED',
+        details: `Booking status changed to "${status}" for booking ID ${booking.id}. (isPaid: ${isPaid !== undefined ? isPaid : booking.isPaid}, isFullPaid: ${isFullPaid !== undefined ? isFullPaid : booking.isFullPaid}).`,
+        userId: studioOwnerId,
+      },
+    }).catch(err => console.error('Audit Log failed:', err));
 
     // Notify Customer
     const studioDisplayName = booking.studioOwner.studioName || booking.studioOwner.name;
@@ -320,5 +338,183 @@ export class BookingsService {
     ).catch(() => {});
 
     return updated;
+  }
+
+  // ─── Booking Payments ──────────────────────────────────────────────────────
+
+  async addPayment(userId: string, role: string, bookingId: string, dto: AddPaymentDto) {
+    const booking = await this.prisma.booking.findFirst({
+      where: role === 'studio_owner'
+        ? { id: bookingId, studioOwnerId: userId }
+        : { id: bookingId, customerId: userId },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const paymentStatus = role === 'studio_owner' ? (dto.status ?? 'VERIFIED') : 'PENDING';
+
+    const payment = await this.prisma.bookingPayment.create({
+      data: {
+        bookingId,
+        amount: dto.amount,
+        method: dto.method,
+        reference: dto.reference ?? null,
+        notes: dto.notes ?? null,
+        screenshot: dto.screenshot ?? null,
+        status: paymentStatus,
+        paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : new Date(),
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'PAYMENT_SUBMITTED',
+        details: `Payment of ₹${dto.amount} logged via ${dto.method} by ${role}. Status: ${paymentStatus}. Reference UTR: ${dto.reference ?? 'N/A'}.`,
+        userId: userId,
+      },
+    });
+
+    await this.updateBookingPaymentFlags(bookingId);
+
+    return payment;
+  }
+
+  async verifyPayment(studioOwnerId: string, bookingId: string, paymentId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, studioOwnerId },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const payment = await this.prisma.bookingPayment.findFirst({
+      where: { id: paymentId, bookingId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    const updatedPayment = await this.prisma.bookingPayment.update({
+      where: { id: paymentId },
+      data: { status: 'VERIFIED' },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'PAYMENT_VERIFIED',
+        details: `Payment of ₹${payment.amount} verified by Studio Owner. Reference UTR: ${payment.reference ?? 'N/A'}.`,
+        userId: studioOwnerId,
+      },
+    });
+
+    await this.updateBookingPaymentFlags(bookingId);
+
+    // Notify Customer
+    this.notificationsService.sendPushNotification(
+      booking.customerId,
+      'Payment Verified',
+      `Your payment of ₹${payment.amount} has been verified by the studio.`,
+      {
+        type: 'BOOKING_STATUS_CHANGED',
+        bookingId: booking.id,
+        status: booking.status,
+      },
+    ).catch(() => {});
+
+    return updatedPayment;
+  }
+
+  async getPayments(userId: string, role: string, bookingId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: role === 'studio_owner' 
+        ? { id: bookingId, studioOwnerId: userId }
+        : { id: bookingId, customerId: userId },
+      include: {
+        payments: {
+          orderBy: { paymentDate: 'desc' },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    // Filter VERIFIED payments for summary
+    const verifiedPayments = booking.payments.filter((p) => p.status === 'VERIFIED');
+    const totalPaid = verifiedPayments.reduce((sum, p) => sum + p.amount, 0);
+    const remainingBalance = Math.max(0, booking.totalPrice - totalPaid);
+
+    return {
+      bookingId,
+      totalPrice: booking.totalPrice,
+      advancePaid: booking.advancePaid,
+      totalPaid,
+      remainingBalance,
+      isPaid: booking.isPaid,
+      isFullPaid: booking.isFullPaid,
+      payments: booking.payments,
+    };
+  }
+
+  async deletePayment(studioOwnerId: string, bookingId: string, paymentId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, studioOwnerId },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const payment = await this.prisma.bookingPayment.findFirst({
+      where: { id: paymentId, bookingId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    await this.prisma.bookingPayment.delete({
+      where: { id: paymentId },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'PAYMENT_DELETED',
+        details: `Payment of ₹${payment.amount} deleted/rejected by Studio Owner. Reference UTR: ${payment.reference ?? 'N/A'}.`,
+        userId: studioOwnerId,
+      },
+    });
+
+    await this.updateBookingPaymentFlags(bookingId);
+
+    return { success: true };
+  }
+
+  private async updateBookingPaymentFlags(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { payments: true },
+    });
+
+    if (!booking) return;
+
+    // Only sum VERIFIED payments!
+    const verifiedPayments = booking.payments.filter((p) => p.status === 'VERIFIED');
+    const totalPaid = verifiedPayments.reduce((sum, p) => sum + p.amount, 0);
+    const isPaid = totalPaid >= booking.advancePaid;
+    const isFullPaid = totalPaid >= booking.totalPrice;
+
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        isPaid,
+        isFullPaid,
+      },
+    });
   }
 }

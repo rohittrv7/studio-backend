@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -6,7 +6,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { BookingsService } from './bookings.service';
-import { CreateBookingDto, UpdateBookingStatusDto, SubmitPaymentDto } from './bookings.dto';
+import { CreateBookingDto, UpdateBookingStatusDto, SubmitPaymentDto, AddPaymentDto } from './bookings.dto';
 import { BookingStatus } from '@prisma/client';
 
 @ApiTags('bookings')
@@ -66,6 +66,51 @@ export class BookingsController {
     @Body() dto: SubmitPaymentDto,
   ) {
     return this.bookingsService.submitPayment(user.sub, id, dto);
+  }
+
+  // ─── Booking Payments ──────────────────────────────────────────────────────
+
+  @Post(':id/payments')
+  @Roles('customer', 'studio_owner')
+  @ApiOperation({ summary: 'Record a new payment for a booking' })
+  addPayment(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: AddPaymentDto,
+  ) {
+    return this.bookingsService.addPayment(user.sub, user.role, id, dto);
+  }
+
+  @Patch(':id/payments/:paymentId/verify')
+  @Roles('studio_owner')
+  @ApiOperation({ summary: 'Verify a pending payment record (Studio Owners only)' })
+  verifyPayment(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Param('paymentId') paymentId: string,
+  ) {
+    return this.bookingsService.verifyPayment(user.sub, id, paymentId);
+  }
+
+  @Get(':id/payments')
+  @Roles('customer', 'studio_owner')
+  @ApiOperation({ summary: 'Get payment history and remaining balance for a booking' })
+  getPayments(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    return this.bookingsService.getPayments(user.sub, user.role, id);
+  }
+
+  @Delete(':id/payments/:paymentId')
+  @Roles('studio_owner')
+  @ApiOperation({ summary: 'Delete a payment record (Studio Owners only)' })
+  deletePayment(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Param('paymentId') paymentId: string,
+  ) {
+    return this.bookingsService.deletePayment(user.sub, id, paymentId);
   }
 }
 

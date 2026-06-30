@@ -56,6 +56,7 @@ export class FavoritesService {
               { customerId: userId },
               { customer: { phone } },
               { studioOwnerId: userId },
+              { qrLinks: { some: { status: 'ACTIVE' } } },
             ],
           },
         },

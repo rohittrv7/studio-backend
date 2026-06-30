@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsDateString, IsEnum, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsEnum, IsOptional, IsBoolean, IsNumber, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBookingDto {
@@ -85,4 +85,41 @@ export class SubmitPaymentDto {
   @IsOptional()
   @IsString()
   paymentMethod?: string;
+}
+
+export class AddPaymentDto {
+  @ApiProperty({ example: 5000 })
+  @IsNumber()
+  @Min(0)
+  amount!: number;
+
+  @ApiProperty({ example: 'UPI' })
+  @IsString()
+  @IsNotEmpty()
+  method!: string;
+
+  @ApiPropertyOptional({ example: 'UTR9876543210' })
+  @IsString()
+  @IsOptional()
+  reference?: string;
+
+  @ApiPropertyOptional({ example: 'Second installment paid' })
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30T10:00:00.000Z' })
+  @IsDateString()
+  @IsOptional()
+  paymentDate?: string;
+
+  @ApiPropertyOptional({ example: 'data:image/png;base64,...' })
+  @IsString()
+  @IsOptional()
+  screenshot?: string;
+
+  @ApiPropertyOptional({ example: 'PENDING' })
+  @IsString()
+  @IsOptional()
+  status?: string;
 }

@@ -78,7 +78,7 @@ export class QrService {
     const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
     const fallbackUrl = `${baseUrl}/api/v1/qr/redirect/${token}`;
 
-    const qrImageUrl = await QRCode.toDataURL(deepLink, { width: 512 });
+    const qrImageUrl = await QRCode.toDataURL(fallbackUrl, { width: 512 });
 
     return { qrImageUrl, token, deepLink, fallbackUrl };
   }
